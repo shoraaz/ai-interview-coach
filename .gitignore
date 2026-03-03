@@ -1,0 +1,36 @@
+# Byte-compiled / cached
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables (secrets)
+.env
+
+# uv
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build
+dist/
+build/
+*.egg-info/
+.ruff_cache/
+
+# Streamlit
+.streamlit/secrets.toml
