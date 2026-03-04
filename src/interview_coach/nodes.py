@@ -16,14 +16,15 @@ from interview_coach.prompts import (
 from interview_coach.utils import parse_evaluation, compute_average_score
 
 
-def _get_llm(api_key: str | None = None, model_id: str | None = None) -> ChatOpenAI:
-    """Instantiate the OpenRouter-backed ChatOpenAI model.
+def _get_llm(api_key: str | None = None, model_id: str | None = None, provider: str = "openrouter") -> ChatOpenAI:
+    """Instantiate an LLM backed by the chosen provider (OpenRouter or Groq).
 
     Args:
         api_key: Optional API key override (e.g. from UI input).
         model_id: Optional model ID override (e.g. from UI dropdown).
+        provider: LLM provider — 'openrouter' or 'groq'.
     """
-    cfg = get_model_config(api_key=api_key, model_id=model_id)
+    cfg = get_model_config(api_key=api_key, model_id=model_id, provider=provider)
     return ChatOpenAI(
         model=cfg.model_name,
         openai_api_key=cfg.api_key,
@@ -38,7 +39,7 @@ def _get_llm(api_key: str | None = None, model_id: str | None = None) -> ChatOpe
 
 def greeting_node(state: InterviewState) -> dict:
     """Welcome the candidate and set up the interview session."""
-    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"))
+    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"), provider=state.get("provider", "openrouter"))
     domain_label = INTERVIEW_DOMAINS.get(state["domain"], state["domain"])
     prompt = build_greeting_prompt()
     chain = prompt | llm
@@ -62,7 +63,7 @@ def greeting_node(state: InterviewState) -> dict:
 
 def ask_question_node(state: InterviewState) -> dict:
     """Generate the next interview question."""
-    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"))
+    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"), provider=state.get("provider", "openrouter"))
     domain_label = INTERVIEW_DOMAINS.get(state["domain"], state["domain"])
     prompt = build_question_prompt()
     chain = prompt | llm
@@ -92,7 +93,7 @@ def ask_question_node(state: InterviewState) -> dict:
 
 def evaluate_answer_node(state: InterviewState) -> dict:
     """Evaluate the candidate's most recent answer."""
-    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"))
+    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"), provider=state.get("provider", "openrouter"))
     prompt = build_evaluator_prompt()
     chain = prompt | llm
 
@@ -149,7 +150,7 @@ def evaluate_answer_node(state: InterviewState) -> dict:
 
 def wrap_up_node(state: InterviewState) -> dict:
     """Summarise the interview and give final feedback."""
-    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"))
+    llm = _get_llm(api_key=state.get("api_key"), model_id=state.get("model_id"), provider=state.get("provider", "openrouter"))
     domain_label = INTERVIEW_DOMAINS.get(state["domain"], state["domain"])
     avg = compute_average_score(state["scores"])
     prompt = build_wrap_up_prompt()

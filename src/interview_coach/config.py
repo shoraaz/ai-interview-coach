@@ -9,24 +9,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# ── Provider base URLs ───────────────────────────────────────────────────────
+
+PROVIDER_BASE_URLS: dict[str, str] = {
+    "openrouter": "https://openrouter.ai/api/v1",
+    "groq": "https://api.groq.com/openai/v1",
+}
+
+PROVIDER_DEFAULT_MODELS: dict[str, str] = {
+    "openrouter": "meta-llama/llama-4-maverick:free",
+    "groq": "llama-3.3-70b-versatile",
+}
+
+
 @dataclass(frozen=True)
 class ModelConfig:
-    """OpenRouter model configuration."""
+    """LLM provider model configuration."""
 
-    # Free models available on OpenRouter (as of 2025)
-    # See https://openrouter.ai/models?q=free for latest free models
     model_name: str = "meta-llama/llama-4-maverick:free"
     base_url: str = "https://openrouter.ai/api/v1"
     api_key: str = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY", ""))
     temperature: float = 0.7
     max_tokens: int = 2048
-
-    # Alternative free models you can try:
-    # "meta-llama/llama-4-maverick:free"
-    # "meta-llama/llama-4-scout:free"
-    # "google/gemma-3-27b-it:free"
-    # "mistralai/mistral-small-3.1-24b-instruct:free"
-    # "qwen/qwen3-235b-a22b:free"
+    provider: str = "openrouter"
 
 
 @dataclass(frozen=True)
@@ -64,27 +69,47 @@ FREE_MODELS: dict[str, str] = {
     "google/gemini-2.0-flash-exp:free": "Gemini 2.0 Flash (Google)",
 }
 
+# Models available on Groq (fast inference)
+GROQ_MODELS: dict[str, str] = {
+    "llama-3.3-70b-versatile": "Llama 3.3 70B Versatile",
+    "llama-3.1-8b-instant": "Llama 3.1 8B Instant",
+    "llama3-70b-8192": "Llama 3 70B",
+    "llama3-8b-8192": "Llama 3 8B",
+    "gemma2-9b-it": "Gemma 2 9B (Google)",
+    "mixtral-8x7b-32768": "Mixtral 8x7B (Mistral)",
+    "qwen-qwq-32b": "Qwen QWQ 32B",
+}
+
 
 def get_model_config(
     api_key: str | None = None,
     model_id: str | None = None,
+    provider: str = "openrouter",
 ) -> ModelConfig:
     """Get the model configuration.
 
     Args:
-        api_key: Optional override for the OpenRouter API key.
+        api_key: Optional override for the API key.
                  If provided, takes precedence over the env var.
         model_id: Optional override for the model name/ID.
                   If provided, takes precedence over the default.
+        provider: LLM provider — 'openrouter' or 'groq'.
     """
-    overrides: dict = {}
-    if api_key:
-        overrides["api_key"] = api_key
-    if model_id:
-        overrides["model_name"] = model_id
-    if overrides:
-        return ModelConfig(**overrides)
-    return ModelConfig()
+    base_url = PROVIDER_BASE_URLS.get(provider, PROVIDER_BASE_URLS["openrouter"])
+    default_model = PROVIDER_DEFAULT_MODELS.get(provider, PROVIDER_DEFAULT_MODELS["openrouter"])
+
+    # Choose env-var fallback based on provider
+    if provider == "groq":
+        env_key = os.getenv("GROQ_API_KEY", "")
+    else:
+        env_key = os.getenv("OPENROUTER_API_KEY", "")
+
+    return ModelConfig(
+        model_name=model_id if model_id else default_model,
+        base_url=base_url,
+        api_key=api_key if api_key else env_key,
+        provider=provider,
+    )
 
 
 def get_interview_config() -> InterviewConfig:

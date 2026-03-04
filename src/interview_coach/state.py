@@ -41,5 +41,6 @@ class InterviewState(TypedDict):
         "wrap_up",
     ]
     is_complete: bool
-    api_key: str  # OpenRouter API key (passed at runtime)
+    api_key: str  # API key for the chosen provider (passed at runtime)
     model_id: str  # Model ID / name to use (e.g. "meta-llama/llama-4-maverick:free")
+    provider: str  # LLM provider — "openrouter" or "groq"

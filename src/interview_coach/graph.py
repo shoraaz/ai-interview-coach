@@ -95,6 +95,7 @@ def get_initial_state(
     max_questions: int = 5,
     api_key: str = "",
     model_id: str = "",
+    provider: str = "openrouter",
 ) -> dict:
     """Return the initial state dict to kick off an interview session.
 
@@ -102,8 +103,9 @@ def get_initial_state(
         domain: Interview topic domain.
         difficulty: easy / medium / hard.
         max_questions: Total questions in the session.
-        api_key: OpenRouter API key (overrides .env if provided).
+        api_key: API key for the chosen provider (overrides .env if provided).
         model_id: Model ID to use (overrides default if provided).
+        provider: LLM provider — 'openrouter' or 'groq'.
     """
     return {
         "messages": [],
@@ -118,4 +120,5 @@ def get_initial_state(
         "is_complete": False,
         "api_key": api_key,
         "model_id": model_id,
+        "provider": provider,
     }

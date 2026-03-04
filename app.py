@@ -6,7 +6,7 @@ import uuid
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 
-from interview_coach.config import INTERVIEW_DOMAINS, FREE_MODELS, get_interview_config
+from interview_coach.config import INTERVIEW_DOMAINS, FREE_MODELS, GROQ_MODELS, get_interview_config
 from interview_coach.graph import build_interview_graph, get_initial_state
 from interview_coach.utils import format_score_bar, compute_average_score
 
@@ -41,23 +41,47 @@ with st.sidebar:
     st.title("🎯 AI Interview Coach")
     st.markdown("---")
 
-    # API Key input
+    # Provider selection
+    provider = st.radio(
+        "🌐 LLM Provider",
+        options=["openrouter", "groq"],
+        format_func=lambda x: {"openrouter": "OpenRouter (free models)", "groq": "Groq (fast inference)"}[x],
+        horizontal=True,
+        disabled=st.session_state.interview_started,
+    )
+    st.session_state.provider = provider
+
+    # API Key input — label & placeholder adapt to provider
+    if provider == "groq":
+        key_label = "🔑 Groq API Key"
+        key_placeholder = "gsk_..."
+        key_help = "Get a free key at https://console.groq.com/keys"
+    else:
+        key_label = "🔑 OpenRouter API Key"
+        key_placeholder = "sk-or-v1-..."
+        key_help = "Get a free key at https://openrouter.ai/keys. Overrides .env if provided."
+
     api_key_input = st.text_input(
-        "🔑 OpenRouter API Key",
+        key_label,
         type="password",
         value=st.session_state.get("api_key", ""),
-        placeholder="sk-or-v1-...",
-        help="Get a free key at https://openrouter.ai/keys. Overrides .env if provided.",
+        placeholder=key_placeholder,
+        help=key_help,
         disabled=st.session_state.interview_started,
     )
     st.session_state.api_key = api_key_input
 
-    # Model selection
-    model_options = list(FREE_MODELS.keys()) + ["custom"]
+    # Model selection — show models for the chosen provider
+    if provider == "groq":
+        model_list = GROQ_MODELS
+    else:
+        model_list = FREE_MODELS
+
+    model_options = list(model_list.keys()) + ["custom"]
     model_choice = st.selectbox(
         "🧠 Model",
         options=model_options,
-        format_func=lambda x: FREE_MODELS.get(x, "✏️ Enter custom model ID"),
+        format_func=lambda x: model_list.get(x, "✏️ Enter custom model ID"),
         disabled=st.session_state.interview_started,
     )
 
@@ -65,8 +89,8 @@ with st.sidebar:
     if model_choice == "custom":
         custom_model_id = st.text_input(
             "Custom Model ID",
-            placeholder="org/model-name:free",
-            help="Enter any OpenRouter model ID (e.g. 'openai/gpt-4o-mini').",
+            placeholder="org/model-name" if provider == "groq" else "org/model-name:free",
+            help="Enter any model ID supported by the chosen provider.",
             disabled=st.session_state.interview_started,
         )
 
@@ -134,7 +158,7 @@ with st.sidebar:
         st.metric("Average Score", f"{avg:.1f}/10")
 
     st.markdown("---")
-    st.caption("Powered by LangGraph + OpenRouter")
+    st.caption("Powered by LangGraph + OpenRouter / Groq")
 
 
 # ── Helper: run graph ────────────────────────────────────────────────────────
@@ -152,9 +176,13 @@ def run_graph(input_state: dict) -> dict:
 if start_btn:
     # Check for API key
     from interview_coach.config import get_model_config
-    _cfg = get_model_config(api_key=st.session_state.get("api_key", ""))
+    _cfg = get_model_config(
+        api_key=st.session_state.get("api_key", ""),
+        provider=st.session_state.get("provider", "openrouter"),
+    )
     if not _cfg.api_key:
-        st.error("⚠️ Please enter your OpenRouter API key in the sidebar (or set OPENROUTER_API_KEY in .env).")
+        provider_name = "Groq" if st.session_state.get("provider") == "groq" else "OpenRouter"
+        st.error(f"⚠️ Please enter your {provider_name} API key in the sidebar.")
         st.stop()
 
     st.session_state.interview_started = True
@@ -162,6 +190,7 @@ if start_btn:
         domain, difficulty, max_questions,
         api_key=st.session_state.get("api_key", ""),
         model_id=st.session_state.get("model_id", ""),
+        provider=st.session_state.get("provider", "openrouter"),
     )
 
     with st.spinner("Starting interview..."):
